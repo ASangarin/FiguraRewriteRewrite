@@ -110,8 +110,6 @@ public class Avatar {
 	public int worldRenderInstructions, entityRenderInstructions, postEntityRenderInstructions, postWorldRenderInstructions;
 	public int accumulatedInitInstructions, accumulatedTickInstructions, accumulatedEntityRenderInstructions, accumulatedWorldRenderInstructions;
 
-	public int customEventInstructions;
-
 	public final RefilledNumber particlesRemaining, soundsRemaining;
 
 	public Avatar(UUID owner) {
@@ -269,14 +267,6 @@ public class Avatar {
 		}
 	}
 
-	public void handleCustomEvent() {
-		if (scriptError || luaRuntime == null || luaRuntime.user == null) return;
-
-		int customEventLimit = trust.get(TrustContainer.Trust.CUSTOM_EVENT);
-		tryCall(luaRuntime.events.CUSTOM_EVENT, customEventLimit);
-		if (luaRuntime != null) customEventInstructions = luaRuntime.getInstructions();
-	}
-
 	public void worldTickEvent() {
 		if (scriptError || luaRuntime == null) return;
 
@@ -349,6 +339,10 @@ public class Avatar {
 
 	public void chatReceivedMessageEvent(String message) {
 		if (!scriptError && luaRuntime != null) tryCall(luaRuntime.events.CHAT_RECEIVE_MESSAGE, -1, message);
+	}
+
+	public void handleCustomEvent(String id) {
+		if (!scriptError && luaRuntime != null) tryCall(luaRuntime.events.CUSTOM_EVENT, -1, id);
 	}
 
 	public void skullRenderEvent(SkullBlockEntity skullBlockEntity, float delta) {

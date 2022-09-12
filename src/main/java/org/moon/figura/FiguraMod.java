@@ -74,8 +74,12 @@ public class FiguraMod implements ClientModInitializer {
 		HudRenderCallback.EVENT.register(FiguraMod::hudRender);
 		ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(LocalAvatarLoader.AVATAR_LISTENER);
 
-		ClientPlayNetworking.registerReceiver(new ResourceLocation("figura", "custom_event"),
-				((client, handler, buf, responseSender) -> client.execute(AvatarManager::handleCustomEvent)));
+		ClientPlayNetworking.registerGlobalReceiver(new ResourceLocation("figura", "custom_event"), ((client, handler, buf, responseSender) -> {
+			LOGGER.info("Received STR: " + buf.readUtf());
+			String str = buf.readUtf();
+
+			client.execute(() -> AvatarManager.handleCustomEvent(str));
+		}));
 	}
 
 	private static void tick(Minecraft client) {

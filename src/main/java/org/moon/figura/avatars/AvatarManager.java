@@ -73,12 +73,12 @@ public class AvatarManager {
             avatar.postWorldRenderEvent(tickDelta);
     }
 
-    public static void handleCustomEvent() {
+    public static void handleCustomEvent(String id) {
         if (panic)
             return;
 
         for (Avatar avatar : LOADED_AVATARS.values())
-            avatar.handleCustomEvent();
+            avatar.handleCustomEvent(id);
     }
 
     public static void applyAnimations() {

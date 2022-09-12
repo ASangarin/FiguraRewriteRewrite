@@ -26,8 +26,7 @@ public class PlayerStatusWidget extends StatusWidget {
 					.append(new FiguraText("gui.trust.render.world", avatar.worldRenderInstructions)).append("\n• ")
 					.append(new FiguraText("gui.trust.render.entity", avatar.entityRenderInstructions)).append("\n• ")
 					.append(new FiguraText("gui.trust.render.post_entity", avatar.postEntityRenderInstructions)).append("\n• ")
-					.append(new FiguraText("gui.trust.render.post_world", avatar.postWorldRenderInstructions)).append("\n• ")
-					.append(new FiguraText("gui.trust.render.custom_event", avatar.customEventInstructions)));
+					.append(new FiguraText("gui.trust.render.post_world", avatar.postWorldRenderInstructions)));
 
 	private final UUID owner;
 	private Avatar avatar;
