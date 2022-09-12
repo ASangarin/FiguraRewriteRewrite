@@ -184,6 +184,7 @@
   "figura.gui.trust.render.entity": "Entity: %s",
   "figura.gui.trust.render.post_entity": "Post Entity: %s",
   "figura.gui.trust.render.post_world": "Post World: %s",
+  "figura.gui.trust.custom_event": "Custom Event: %s",
 
   "figura.gui.status.size": "Size",
   "figura.gui.status.size.0": "none",

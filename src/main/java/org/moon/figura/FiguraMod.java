@@ -3,6 +3,7 @@ package org.moon.figura;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
@@ -11,6 +12,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.world.entity.Entity;
@@ -43,129 +45,130 @@ import java.util.UUID;
 
 public class FiguraMod implements ClientModInitializer {
 
-    public static final String MOD_ID = "figura";
-    public static final String MOD_NAME = "Figura";
-    public static final String VERSION = FabricLoader.getInstance().getModContainer(MOD_ID).get().getMetadata().getVersion().getFriendlyString();
-    public static final boolean DEBUG_MODE = Math.random() + 1 < 0;
-    public static final LocalDate DATE = LocalDate.now();
-    public static final boolean CHEESE_DAY = DATE.getDayOfMonth() == 1 && DATE.getMonthValue() == 4;
-    public static final Path GAME_DIR = FabricLoader.getInstance().getGameDir().normalize();
-    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
+	public static final String MOD_ID = "figura";
+	public static final String MOD_NAME = "Figura";
+	public static final String VERSION = FabricLoader.getInstance().getModContainer(MOD_ID).get().getMetadata().getVersion().getFriendlyString();
+	public static final boolean DEBUG_MODE = Math.random() + 1 < 0;
+	public static final LocalDate DATE = LocalDate.now();
+	public static final boolean CHEESE_DAY = DATE.getDayOfMonth() == 1 && DATE.getMonthValue() == 4;
+	public static final Path GAME_DIR = FabricLoader.getInstance().getGameDir().normalize();
+	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
-    public static int ticks = 0;
+	public static int ticks = 0;
 
-    @Override
-    public void onInitializeClient() {
-        //init managers
-        ConfigManager.init();
-        TrustManager.init();
-        LocalAvatarFetcher.init();
-        FiguraAPIManager.init();
-        FiguraDocsManager.init();
-        FiguraCommands.init();
+	@Override
+	public void onInitializeClient() {
+		//init managers
+		ConfigManager.init();
+		TrustManager.init();
+		LocalAvatarFetcher.init();
+		FiguraAPIManager.init();
+		FiguraDocsManager.init();
+		FiguraCommands.init();
 
-        //register events
-        ClientTickEvents.START_CLIENT_TICK.register(FiguraMod::tick);
-        WorldRenderEvents.START.register(levelRenderer -> AvatarManager.onWorldRender(levelRenderer.tickDelta()));
-        WorldRenderEvents.END.register(levelRenderer -> AvatarManager.afterWorldRender(levelRenderer.tickDelta()));
-        WorldRenderEvents.AFTER_ENTITIES.register(FiguraMod::renderFirstPersonWorldParts);
-        HudRenderCallback.EVENT.register(FiguraMod::hudRender);
-        ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(LocalAvatarLoader.AVATAR_LISTENER);
-    }
+		//register events
+		ClientTickEvents.START_CLIENT_TICK.register(FiguraMod::tick);
+		WorldRenderEvents.START.register(levelRenderer -> AvatarManager.onWorldRender(levelRenderer.tickDelta()));
+		WorldRenderEvents.END.register(levelRenderer -> AvatarManager.afterWorldRender(levelRenderer.tickDelta()));
+		WorldRenderEvents.AFTER_ENTITIES.register(FiguraMod::renderFirstPersonWorldParts);
+		HudRenderCallback.EVENT.register(FiguraMod::hudRender);
+		ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(LocalAvatarLoader.AVATAR_LISTENER);
 
-    private static void tick(Minecraft client) {
-        NetworkManager.tick();
-        LocalAvatarLoader.tickWatchedKey();
-        AvatarManager.tickLoadedAvatars();
-        FiguraLuaPrinter.printChatFromQueue();
-        ticks++;
-    }
+		ClientPlayNetworking.registerReceiver(new ResourceLocation("figura", "custom_event"),
+				((client, handler, buf, responseSender) -> client.execute(AvatarManager::handleCustomEvent)));
+	}
 
-    private static void renderFirstPersonWorldParts(WorldRenderContext context) {
-        if (!context.camera().isDetached()) {
-            Entity watcher = context.camera().getEntity();
-            Avatar avatar = AvatarManager.getAvatar(watcher);
-            if (avatar != null)
-                avatar.firstPersonWorldRender(watcher, context.consumers(), context.matrixStack(), context.camera(), context.tickDelta());
-        }
-    }
+	private static void tick(Minecraft client) {
+		NetworkManager.tick();
+		LocalAvatarLoader.tickWatchedKey();
+		AvatarManager.tickLoadedAvatars();
+		FiguraLuaPrinter.printChatFromQueue();
+		ticks++;
+	}
 
-    private static void hudRender(PoseStack stack, float delta) {
-        if (AvatarManager.panic)
-            return;
+	private static void renderFirstPersonWorldParts(WorldRenderContext context) {
+		if (!context.camera().isDetached()) {
+			Entity watcher = context.camera().getEntity();
+			Avatar avatar = AvatarManager.getAvatar(watcher);
+			if (avatar != null)
+				avatar.firstPersonWorldRender(watcher, context.consumers(), context.matrixStack(), context.camera(), context.tickDelta());
+		}
+	}
 
-        PaperDoll.render(stack);
-        ActionWheel.render(stack);
-        PopupMenu.render(stack);
-    }
+	private static void hudRender(PoseStack stack, float delta) {
+		if (AvatarManager.panic) return;
 
-    // -- Helper Functions -- //
+		PaperDoll.render(stack);
+		ActionWheel.render(stack);
+		PopupMenu.render(stack);
+	}
 
-    //mod root directory
-    public static Path getFiguraDirectory() {
-        String config = Config.MAIN_DIR.asString();
-        Path p = config.isBlank() ? GAME_DIR.resolve(MOD_ID) : Path.of(config);
-        try {
-            Files.createDirectories(p);
-        } catch (FileAlreadyExistsException ignored) {
-        } catch (Exception e) {
-            LOGGER.error("Failed to create the main " + MOD_NAME + " directory", e);
-        }
+	// -- Helper Functions -- //
 
-        return p;
-    }
+	//mod root directory
+	public static Path getFiguraDirectory() {
+		String config = Config.MAIN_DIR.asString();
+		Path p = config.isBlank() ? GAME_DIR.resolve(MOD_ID) : Path.of(config);
+		try {
+			Files.createDirectories(p);
+		} catch (FileAlreadyExistsException ignored) {
+		} catch (Exception e) {
+			LOGGER.error("Failed to create the main " + MOD_NAME + " directory", e);
+		}
 
-    //mod cache directory
-    public static Path getCacheDirectory() {
-        Path p = getFiguraDirectory().resolve("cache");
-        try {
-            Files.createDirectories(p);
-        } catch (FileAlreadyExistsException ignored) {
-        } catch (Exception e) {
-            LOGGER.error("Failed to create cache directory", e);
-        }
+		return p;
+	}
 
-        return p;
-    }
+	//mod cache directory
+	public static Path getCacheDirectory() {
+		Path p = getFiguraDirectory().resolve("cache");
+		try {
+			Files.createDirectories(p);
+		} catch (FileAlreadyExistsException ignored) {
+		} catch (Exception e) {
+			LOGGER.error("Failed to create cache directory", e);
+		}
 
-    //get local player uuid
-    public static UUID getLocalPlayerUUID() {
-        return Minecraft.getInstance().getUser().getGameProfile().getId();
-    }
+		return p;
+	}
 
-    public static boolean isLocal(UUID other) {
-        return getLocalPlayerUUID().compareTo(other) == 0;
-    }
+	//get local player uuid
+	public static UUID getLocalPlayerUUID() {
+		return Minecraft.getInstance().getUser().getGameProfile().getId();
+	}
 
-    /**
-     * Sends a chat message right away. Use when you know your message is safe.
-     * If your message is unsafe, (generated by a user), use luaSendChatMessage instead.
-     * @param message - text to send
-     */
-    public static void sendChatMessage(Component message) {
-        if (Minecraft.getInstance().gui != null)
-            Minecraft.getInstance().gui.getChat().addMessage(TextUtils.replaceTabs(message));
-        else
-            LOGGER.info(message.getString());
-    }
+	public static boolean isLocal(UUID other) {
+		return getLocalPlayerUUID().compareTo(other) == 0;
+	}
 
-    /**
-     * Converts a player name to UUID using minecraft internal functions.
-     * @param playerName - the player name
-     * @return - the player's uuid or null
-     */
-    public static UUID playerNameToUUID(String playerName) {
-        GameProfileCache cache = SkullBlockEntityAccessor.getProfileCache();
-        if (cache == null)
-            return null;
+	/**
+	 * Sends a chat message right away. Use when you know your message is safe.
+	 * If your message is unsafe, (generated by a user), use luaSendChatMessage instead.
+	 *
+	 * @param message - text to send
+	 */
+	public static void sendChatMessage(Component message) {
+		if (Minecraft.getInstance().gui != null) Minecraft.getInstance().gui.getChat().addMessage(TextUtils.replaceTabs(message));
+		else LOGGER.info(message.getString());
+	}
 
-        var profile = cache.get(playerName);
-        return profile.isEmpty() ? null : profile.get().getId();
-    }
+	/**
+	 * Converts a player name to UUID using minecraft internal functions.
+	 *
+	 * @param playerName - the player name
+	 * @return - the player's uuid or null
+	 */
+	public static UUID playerNameToUUID(String playerName) {
+		GameProfileCache cache = SkullBlockEntityAccessor.getProfileCache();
+		if (cache == null) return null;
 
-    public static Style getAccentColor() {
-        Avatar avatar = AvatarManager.getAvatarForPlayer(getLocalPlayerUUID());
-        int color = avatar != null ? ColorUtils.userInputHex(avatar.color, ColorUtils.Colors.FRAN_PINK.vec) : ColorUtils.Colors.FRAN_PINK.hex;
-        return Style.EMPTY.withColor(color);
-    }
+		var profile = cache.get(playerName);
+		return profile.isEmpty() ? null : profile.get().getId();
+	}
+
+	public static Style getAccentColor() {
+		Avatar avatar = AvatarManager.getAvatarForPlayer(getLocalPlayerUUID());
+		int color = avatar != null ? ColorUtils.userInputHex(avatar.color, ColorUtils.Colors.FRAN_PINK.vec) : ColorUtils.Colors.FRAN_PINK.hex;
+		return Style.EMPTY.withColor(color);
+	}
 }

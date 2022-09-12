@@ -46,6 +46,7 @@ public class DebugScreenOverlayMixin {
                         avatar.postEntityRenderInstructions,
                         avatar.postWorldRenderInstructions)
                 );
+                lines.add(++i, String.format("Custom instructions: %d", avatar.customEventInstructions));
             }
         }
         lines.add(++i, String.format("Pings per second: ↑%d, ↓%d", NetworkManager.pingsSent, NetworkManager.pingsReceived));

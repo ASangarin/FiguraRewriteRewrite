@@ -40,7 +40,8 @@ public class TrustContainer {
         OFFSCREEN_RENDERING,
         //CUSTOM_RENDER_LAYER,
         CUSTOM_SOUNDS,
-        CUSTOM_HEADS;
+        CUSTOM_HEADS,
+        CUSTOM_EVENT;
 
         //toggle check
         public final boolean isToggle;
