@@ -70,7 +70,7 @@ public class EventsAPI {
 	@LuaFieldDoc("events.post_preview_render")
 	public final LuaEvent POST_PREVIEW_RENDER;
 	@LuaWhitelist
-	@LuaFieldDoc("events.custom")
+	@LuaFieldDoc("events.custom_event")
 	public final LuaEvent CUSTOM_EVENT;
 
 	@LuaWhitelist
